@@ -2,12 +2,19 @@
   "expo": {
     "plugins": [
       [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow $(PRODUCT_NAME) to use your location."
+        }
+      ],
+      [
         "expo-dev-client",
         {
           "androidPackage": "com.yourcompany.yourapp",
           "iosBundleIdentifier": "com.yourcompany.yourapp"
         }
-      ]
+      ],
+      "expo-asset"
     ],
     "name": "GradProject",
     "slug": "GradProject",

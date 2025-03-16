@@ -18,6 +18,7 @@ import UpdateSchedule from './screens/UpdateSchedule';
 import busSchedule from './screens/busSchedule'
 import updateBus from './screens/updateBus'
 import BusDetails from './screens/BusDetails'
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 
 const Stack = createStackNavigator();
@@ -25,6 +26,7 @@ const Drawer = createDrawerNavigator();
 
 const App = () => {
   return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
     <NavigationContainer>
       <Stack.Navigator initialRouteName="Welcome">
         <Stack.Screen name="Welcome" component={Welcome}  options={{ headerShown: false,  headerTitle: '    ' }} />
@@ -74,7 +76,7 @@ const App = () => {
          headerTransparent: false,
          headerTintColor: 'black',  // To change the color of any text/icon in the header
        }}/>
-        <Stack.Screen name="ClosestBusStation" component={ClosestBusStation} />
+         <Stack.Screen name="ClosestBusStation" component={ClosestBusStation} />
         <Stack.Screen name="Feedback" component={Feedback} />
         <Stack.Screen name="ReportMissing" component={ReportMissing} />
         
@@ -83,7 +85,7 @@ const App = () => {
 
      </Stack.Navigator>
     </NavigationContainer>
-
+    </GestureHandlerRootView>
 
   );
 };
