@@ -56,7 +56,7 @@ const SignIn = ({ navigation }) => {
       console.log("Token stored:", token);
   
       // Navigate to Home with the role
-      navigation.navigate("Home", { role });
+      navigation.navigate("Home", { role, name:formData.name });
       Alert.alert("Success", "Signed in successfully!");
     } catch (error) {
       // Handle network errors

@@ -12,7 +12,8 @@ import SignIn from './screens/SignIn';
 import Home from './screens/Home'; 
 import ClosestBusStation from './screens/ClosestBusStation';
 import Feedback from './screens/Feedback';
-import ReportMissing from './screens/ReportMissing';
+import ReportMissingS from './screens/ReportMissingS';
+import ReportMissingOD from './screens/ReportMissingOD';
 import Notifications from './screens/Notifications';
 import UpdateSchedule from './screens/UpdateSchedule';
 import busSchedule from './screens/busSchedule'
@@ -78,8 +79,10 @@ const App = () => {
        }}/>
          <Stack.Screen name="ClosestBusStation" component={ClosestBusStation} />
         <Stack.Screen name="Feedback" component={Feedback} />
-        <Stack.Screen name="ReportMissing" component={ReportMissing} />
-        
+        <Stack.Screen name="ReportMissingS" component={ReportMissingS} options={{
+          headerTitle: 'Report Missing Item'}}/>
+        <Stack.Screen name="ReportMissingOD" component={ReportMissingOD} options={{
+          headerTitle: 'Report Missing Item'}} />
         <Stack.Screen name="Notifications" component={Notifications} />
         
 

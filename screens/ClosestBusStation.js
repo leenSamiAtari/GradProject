@@ -917,14 +917,13 @@ const styles = StyleSheet.create({
 export default ClosestBusStation; */
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Linking, FlatList, Animated } from 'react-native';
-import { BottomSheet } from '@gorhom/bottom-sheet';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import MapView, { Marker } from 'react-native-maps';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 
 const COLORS = {
   primary: '#2F80ED',
@@ -935,9 +934,11 @@ const COLORS = {
   skeleton: '#E0E0E0',
 };
 
-const API_URL = 'https://7ae3-91-186-249-30.ngrok-free.app/busStation/closest-stations';
-const CACHE_KEY = 'stations_cache';
-const CACHE_EXPIRY = Infinity; // Never expires
+const API_URL = 'https://5b55-109-107-226-44.ngrok-free.app/busStation/closest-stations';
+const getCacheKey = (lat, lon) => `ROUTE_CACHE_${lat}_${lon}`;
+const STATION_DATA_EXPIRY = 24 * 60 * 60 * 1000; // 24h (station names/coordinates)
+const ROUTING_DATA_EXPIRY = 15 * 60 * 1000; // 15m (distances/times from API)
+
 
 const ClosestBusStation = () => {
   const [userLocation, setUserLocation] = useState(null);
@@ -946,25 +947,33 @@ const ClosestBusStation = () => {
   const [errorMsg, setErrorMsg] = useState('');
   const [region, setRegion] = useState(null);
   const [isCached, setIsCached] = useState(false);
-  const bottomSheetRef = useRef(null);
-  const snapPoints = ['25%', '60%', '90%'];
   const fadeAnim = useState(new Animated.Value(0))[0];
 
-  // Bottom sheet handlers
-  const handleSheetChanges = useCallback((index) => {
-    console.log('handleSheetChanges', index);
-  }, []);
+ const cleanExpiredCache = async () => {
+    const allKeys = await AsyncStorage.getAllKeys();
+    const expiredKeys = await Promise.all(
+      allKeys.map(async (key) => {
+        if (!key.startsWith('ROUTE_CACHE')) return null;
+        const cachedData = await AsyncStorage.getItem(key);
+        const { timestamp } = JSON.parse(cachedData);
+        return Date.now() - timestamp > ROUTING_DATA_EXPIRY ? key : null;
+      })
+    );
+    await AsyncStorage.multiRemove(expiredKeys.filter(Boolean));
+  };
 
   // Caching functions
-  const getCachedData = async () => {
+  const getCachedData = async (lat,lon) => {
     try {
+      const CACHE_KEY = getCacheKey(lat, lon);
       const cachedData = await AsyncStorage.getItem(CACHE_KEY);
       if (!cachedData) return null;
       
       const { timestamp, data } = JSON.parse(cachedData);
-      if (Date.now() - timestamp < CACHE_EXPIRY) {
+      if (Date.now() - timestamp < ROUTING_DATA_EXPIRY) {
         return data;
       }
+      await AsyncStorage.removeItem(CACHE_KEY);
       return null;
     } catch (error) {
       console.error('Error reading cache:', error);
@@ -972,13 +981,15 @@ const ClosestBusStation = () => {
     }
   };
 
-  const cacheData = async (data) => {
+  const cacheData = async (data, lat, lon) => {
     try {
+      const CACHE_KEY = getCacheKey(lat, lon);
       const cache = {
         timestamp: Date.now(),
         data: data
       };
       await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+      await cleanExpiredCache();
     } catch (error) {
       console.error('Error caching data:', error);
     }
@@ -986,7 +997,7 @@ const ClosestBusStation = () => {
 
   const fetchNearbyStations = async (latitude, longitude) => {
     try {
-      const cached = await getCachedData();
+      const cached = await getCachedData(latitude, longitude);
       if (cached) {
         setNearbyStations(cached);
         setIsCached(true);
@@ -995,6 +1006,7 @@ const ClosestBusStation = () => {
           duration: 500,
           useNativeDriver: true,
         }).start();
+        return;
       }
 
       const url = new URL(API_URL);
@@ -1013,7 +1025,7 @@ const ClosestBusStation = () => {
       
       const data = await response.json();
       setNearbyStations(data);
-      await cacheData(data);
+      await cacheData(data.stations, latitude, longitude);
       setIsCached(false);
       calculateMapRegion(latitude, longitude);
       setStatus('success');
@@ -1088,7 +1100,11 @@ const ClosestBusStation = () => {
         <Text style={styles.stationName}>{item.station_name}</Text>
       </View>
       <View style={styles.stationDetails}>
+      <View style={styles.distanceTimeContainer}>
         <Text style={styles.distanceText}>{item.distance.toFixed(2)} km away</Text>
+        <Text style={styles.timeText}>{Math.round(item.time)} mins
+        </Text>
+        </View>
         <TouchableOpacity
           style={styles.directionsButton}
           onPress={() => Linking.openURL(
@@ -1156,20 +1172,13 @@ const ClosestBusStation = () => {
                     longitude: station.lon,
                   }}
                   title={station.station_name}
-                  description={`${station.distance.toFixed(2)} km away`}
+                  description={`${station.distance.toFixed(2)} km away · ${Math.round(station.time)} mins`}
                   pinColor={COLORS.success}
                 />
               ))}
             </MapView>
 
-            <BottomSheet
-              ref={bottomSheetRef}
-              index={1}
-              snapPoints={snapPoints}
-              onChange={handleSheetChanges}
-              backgroundStyle={styles.sheetBackground}
-              handleIndicatorStyle={styles.sheetHandle}
-            >
+            <BlurView intensity={70} tint="default" style={styles.listContainer}>
               <FlatList
                 data={nearbyStations}
                 renderItem={isCached ? SkeletonItem : renderStationItem}
@@ -1186,7 +1195,7 @@ const ClosestBusStation = () => {
                   </View>
                 }
               />
-            </BottomSheet>
+            </BlurView>
 
             <TouchableOpacity style={styles.refreshButton} onPress={handleRefresh}>
               <MaterialCommunityIcons name="reload" size={20} color="white" />
@@ -1216,43 +1225,48 @@ const styles = StyleSheet.create({
   },
   map: {
     ...StyleSheet.absoluteFillObject,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.1)',
   },
-  sheetBackground: {
-    backgroundColor: COLORS.background,
-    borderRadius: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-  },
-  sheetHandle: {
-    backgroundColor: COLORS.primary,
-    width: 40,
-    height: 4,
-    marginVertical: 8,
+  listContainer: {
+    position: 'absolute',
+    bottom: 1,
+    left: 1,
+    right: 1,
+    maxHeight: '45%',
+  borderRadius: 24,
+  overflow: 'hidden', 
+  backgroundColor: 'rgba(255,255,255,0.4)', 
+  borderWidth: 1,
+  borderColor: 'rgba(255,255,255,0.2)',
+    overflow: 'hidden',
   },
   listContent: {
     paddingHorizontal: 16,
     paddingBottom: 16,
+    paddingTop: 8,
   },
   listHeader: {
     fontSize: 20,
-    fontWeight: '600',
+    fontWeight: '700',
     color: COLORS.text,
-    marginVertical: 16,
+    marginVertical: 12,
     paddingHorizontal: 16,
+    letterSpacing: -0.5,
   },
   stationCard: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    marginHorizontal: 16,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    marginHorizontal: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.03)',
   },
   stationHeader: {
     flexDirection: 'row',
@@ -1260,27 +1274,45 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   stationName: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '600',
     color: COLORS.text,
-    marginLeft: 8,
+    marginLeft: 12,
+    letterSpacing: -0.2,
   },
   stationDetails: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginTop: 12,
+  },
+  distanceTimeContainer: {
+    flexDirection: 'column',
   },
   distanceText: {
-    fontSize: 14,
+    fontSize: 15,
+    fontWeight: '500',
     color: COLORS.text,
+    marginRight: 8,
+  },
+  timeText: { 
+    fontSize: 13,
+    fontWeight: '400',
+    color: COLORS.textSecondary,
+    marginTop: 2,
   },
   directionsButton: {
     flexDirection: 'row',
     backgroundColor: COLORS.primary,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
     alignItems: 'center',
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 2,
   },
   smallButtonText: {
     color: 'white',
@@ -1298,17 +1330,20 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   refreshButton: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.primary,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    alignItems: 'center',
-    margin: 16,
-    justifyContent: 'center',
     position: 'absolute',
-    bottom: 0,
-    alignSelf: 'center',
+    bottom: 100, // Above the list
+    right: 20,
+    backgroundColor: COLORS.primary,
+    width: 100,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 6,
   },
   buttonText: {
     color: 'white',
@@ -1361,3 +1396,4 @@ const styles = StyleSheet.create({
 });
 
 export default ClosestBusStation;
+

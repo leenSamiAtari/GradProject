@@ -2,6 +2,13 @@
   "expo": {
     "plugins": [
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow access to your photos to upload item images",
+          "cameraPermission": "Allow access to your camera to take photos of items"
+        }
+      ],
+      [
         "expo-location",
         {
           "locationAlwaysAndWhenInUsePermission": "Allow $(PRODUCT_NAME) to use your location."

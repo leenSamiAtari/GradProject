@@ -19,7 +19,7 @@ const Home = ({ navigation, route }) => {
     {
       title: "Report Missing Items",
       icon: "alert-circle-outline",
-      action: () => navigation.navigate("ReportMissing"),
+      action: () => navigation.navigate("ReportMissingS"),
     },
     {
       title: "View Bus Schedule",
@@ -46,7 +46,7 @@ const Home = ({ navigation, route }) => {
     {
       title: "Report Missing Items",
       icon: "alert-circle-outline",
-      action: () => navigation.navigate("ReportMissing"),
+      action: () => navigation.navigate("ReportMissingOD"),
     },
     {
       title: "Notify Students",
@@ -70,6 +70,29 @@ const Home = ({ navigation, route }) => {
     },
   ];
   
+  const driverMenuItems = [
+    {
+      title: "Report Missing Items",
+      icon: "alert-circle-outline",
+      action: () => navigation.navigate("ReportMissingOD"),
+    },
+    {
+      title: "Notify Students",
+      icon: "message-alert-outline",
+      action: () => navigation.navigate("NotifyStudents"),
+    },
+    {
+      title: "View Notifications",
+      icon: "bell-ring-outline",
+      action: () => navigation.navigate("Notifications"),
+    },
+    {
+      title: "Profile",
+      icon: "account-circle-outline",
+      action: () => navigation.navigate("Profile", { role }),
+    },
+  ];
+  
   const getTimeBasedGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return "Good Morning";
@@ -80,7 +103,10 @@ const Home = ({ navigation, route }) => {
     return role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
   };
   
-  const menuItems = role === "OPERATOR" ? operatorMenuItems : studentMenuItems;
+  const menuItems = 
+  role === "OPERATOR" ? operatorMenuItems : 
+  role === "DRIVER" ? driverMenuItems : 
+  studentMenuItems;
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -139,7 +165,7 @@ const Home = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
-    backgroundColor: "#f8ffff",
+    backgroundColor: 'rgba(89, 179, 248, 0.09)',
     paddingHorizontal: 20,
     paddingTop: 0,
   },

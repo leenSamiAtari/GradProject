@@ -54,7 +54,7 @@ const SignUp = ({ route, navigation }) => {
         Alert.alert("Sign-Up Successful", message);
       }
   
-      navigation.navigate("SignIn",{role});
+      navigation.navigate("SignIn",{role, name:formData.name});
     } catch (error) {
       console.error("Error during sign-up:", error.message);
       Alert.alert("Sign-Up Failed", error.message);

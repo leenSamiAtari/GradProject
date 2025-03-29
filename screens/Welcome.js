@@ -19,14 +19,11 @@ const Welcome = () => {
       <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Home', { role: 'STUDENT' })}>
         <Text style={styles.buttonText}>Student</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('SignUp', { role: 'DRIVER' })}>
+      <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Home', { role: 'DRIVER' })}>
         <Text style={styles.buttonText}>Driver</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('SignUp', { role: 'OPERATOR' })}>
+      <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Home', { role: 'OPERATOR' })}>
         <Text style={styles.buttonText}>Operator</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('SignIn', { role: 'ADMIN' })}>
-        <Text style={styles.buttonText}>Admin</Text>
       </TouchableOpacity>
 
       <TouchableOpacity onPress={() => navigation.navigate('SignIn' )}>
