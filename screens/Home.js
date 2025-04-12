@@ -19,7 +19,10 @@ const Home = ({ navigation, route }) => {
     {
       title: "Report Missing Items",
       icon: "alert-circle-outline",
-      action: () => navigation.navigate("ReportMissingS"),
+      action: () => navigation.navigate("ReportMissingS",{
+        userName: "Test Student",
+        userEmail: "test@university.edu",
+        role: "student"})
     },
     {
       title: "View Bus Schedule",
