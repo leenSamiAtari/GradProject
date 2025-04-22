@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { View, ScrollView, StyleSheet, Text, Image } from 'react-native';
 import { Card, Button, Menu, Divider, Provider, TextInput, Icon, Modal, Portal} from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import * as SecureStore from 'expo-secure-store';
+
+const API_URL = "https://your-ngrok-url.ngrok.io";
 
 const ReportMissingOD = ({ navigation }) => {
   const [items, setItems] = useState([]);
@@ -11,6 +14,45 @@ const ReportMissingOD = ({ navigation }) => {
   const [detailsVisible, setDetailsVisible] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [fetchError, setFetchError] = useState(null);
+
+  const fetchItems = async () => {
+    try {
+      const token = await SecureStore.getItemAsync('authToken');
+    if (!token) {
+      setFetchError('Not authenticated');
+      navigation.navigate('Login'); // Redirect if no token
+      return;
+    }
+      const response = await fetch(`${API_URL}/api/items`,{
+        headers: {
+          'Authorization' : `Bearer ${token}`
+        }
+      });
+  
+      if (!response.ok) throw new Error('Server response not OK');
+      const data = await response.json();
+      
+      // Convert string dates to Date objects
+      const formattedData = data.map(item => ({
+        ...item,
+        dateLost: new Date(item.dateLost),
+        timeApproximate: new Date(item.timeApproximate)
+      }));
+      
+      setItems(formattedData);
+    } catch (error) {
+      console.error('Error fetching items:', error);
+      setFetchError(error.message);
+      setItems([]); 
+    }
+  };
+
+  useEffect(() => {
+    fetchItems(); 
+  }, []);
+
 
    // Date formatting helpers
    const formatDate = (date) => {
@@ -35,85 +77,7 @@ const ReportMissingOD = ({ navigation }) => {
     setModalVisible(true);
   };
 
-
-  // Mock data - replace with API call
-  const mockItems = [
-    {
-      id: 1,
-      category: 'Hat',
-      description: 'Nike, blue',
-      station: 'shafa badran',
-      dateLost: new Date('2025-03-08'),  
-      timeApproximate: new Date('2025-03-08T09:00'),
-      student: { name: 'Ali Ahmad', id: '20191010' },
-      status: 'pending',
-      locationType: 'bus',
-      busNumber: 'AX-235',
-      photos: ['https://example.com/wallet.jpg'],
-      brand: 'Bellroy',
-     containsItems: true,
-     itemsInside: 'Credit cards, ID, €50 cash',
-     uniqueFeatures: 'Monogram "JSD" on inside flap',
-    },
-    {
-        id: 2,
-        category: 'Laptop',
-        description: 'MacBook Pro 2020  Gray',
-        station: 'North bus station',
-        dateLost: new Date('2025-03-15'),
-        timeApproximate: new Date('2025-03-15T14:30'),
-        student: { name: 'Leen Atari', id: '2135990' },
-        status: 'pending',
-        locationType: 'bus',
-        busNumber: 'AX-235',
-        photos: ['https://example.com/wallet.jpg'],
-        brand: 'Bellroy',
-        containsItems: true,
-        itemsInside: 'Credit cards, ID, €50 cash',
-        uniqueFeatures: 'Monogram "JSD" on inside flap',
-      },
-      {
-        id: 3,
-        category: 'Laptop',
-        description: 'Lenovo',
-        station: 'sweileh',
-        dateLost: new Date('2025-04-03'),
-        timeApproximate: new Date('2025-04-03T08:45'),
-        student: { name: 'Yasmeen Sami', id: '2435667' },
-        status: 'pending',
-        locationType: 'bus',
-        busNumber: 'AX-235',
-        photos: ['https://example.com/wallet.jpg'],
-        brand: 'Bellroy',
-       containsItems: true,
-      itemsInside: 'Credit cards, ID, €50 cash',
-       uniqueFeatures: 'Monogram "JSD" on inside flap',
-      },
-      {
-        id: 4,
-        category: 'Glasses',
-        description: 'black, scratch from the side',
-        station: 'North bus station',
-        dateLost: new Date('2025-02-15'),
-        timeApproximate: new Date('2025-02-15T16:20'),
-        student: { name: 'Osama Ahmad', id: '8900612' },
-        status: 'pending',
-        locationType: 'bus',
-        busNumber: 'AX-235',
-        photos: ['https://example.com/wallet.jpg'],
-        brand: 'Bellroy',
-        containsItems: true,
-        itemsInside: 'Credit cards, ID, €50 cash',
-        uniqueFeatures: 'Monogram "JSD" on inside flap',
-      },
-    // Add more items...
-  ];
-
-  useEffect(() => {
-    // Fetch items from your API
-    // fetch('https://your-api/items').then(res => setItems(res.data))
-    setItems(mockItems);
-  }, []);
+  
 
   const filteredItems = items.filter(item => {
     const matchesStation = selectedStation ? 
@@ -128,9 +92,27 @@ const ReportMissingOD = ({ navigation }) => {
     return matchesStation && matchesSearch;
   });
 
+  const ErrorSnackbar = () => (
+    <Snackbar
+      visible={!!fetchError}
+      onDismiss={() => setFetchError(null)}
+      action={{
+        label: 'Dismiss',
+        onPress: () => setFetchError(null),
+      }}
+      style={styles.errorSnackbar}
+    >
+      🚨 Error: {fetchError}
+    </Snackbar>
+  );
+
   return (
     <Provider>
       <ScrollView contentContainerStyle={styles.container}>
+      <ErrorSnackbar />
+      {!fetchError && filteredItems.length === 0 && (
+          <Text style={styles.emptyText}>No items found matching your search</Text>
+        )}
         {/* Search and Filter Section */}
         <View style={styles.filterContainer}>
           <TextInput
@@ -202,7 +184,8 @@ const ReportMissingOD = ({ navigation }) => {
                 style={styles.messageButton}
                 onPress={() => navigation.navigate('Chat', { 
                   studentId: item.student.id,
-                  itemId: item.id 
+                  itemId: item.id ,
+                  authToken: token
                 })}
               >
                 Message Student
@@ -423,6 +406,15 @@ const styles = StyleSheet.create({
   },
   detailsButton: {
     marginRight: 8,
+  },
+  errorSnackbar: {
+    backgroundColor: '#ff4444',
+    margin: 16,
+  },
+  emptyText: {
+    textAlign: 'center',
+    margin: 20,
+    color: '#888',
   },
 });
 

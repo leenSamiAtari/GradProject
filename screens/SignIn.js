@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert,Keyboard, ImageBackground } from "react-native";
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialIcons } from "@expo/vector-icons";
 import { useNavigation } from '@react-navigation/native';
+import * as SecureStore from 'expo-secure-store';
+
+const API_URL = "https://your-ngrok-url.ngrok.io";
 
 const SignIn = ({ navigation }) => {
   const [email, setEmail] = useState("");
@@ -16,7 +18,7 @@ const SignIn = ({ navigation }) => {
   
     try {
       // Make the API call to sign in
-      const response = await fetch("https://b551-2a01-9700-8040-4900-656e-5e26-3dc8-8e5a.ngrok-free.app/api2/login", {
+      const response = await fetch(`${API_URL}/api2/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -52,7 +54,7 @@ const SignIn = ({ navigation }) => {
       const { role, token } = data;
   
       console.log("User signed in:", data);
-      await AsyncStorage.setItem("authToken", token);
+      await SecureStore.setItemAsync("authToken", token);
       console.log("Token stored:", token);
   
       // Navigate to Home with the role

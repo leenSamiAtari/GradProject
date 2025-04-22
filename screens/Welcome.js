@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image, Button } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
 const Welcome = () => {
@@ -29,6 +29,11 @@ const Welcome = () => {
       <TouchableOpacity onPress={() => navigation.navigate('SignIn' )}>
         <Text style={styles.linkText}>Already have an account? Sign In</Text>
       </TouchableOpacity>
+
+      <Button
+        title="👑" // Disguised as a normal button
+        onPress={() => navigation.navigate('AdminLogin')}
+      />
     </View>
   );
 };

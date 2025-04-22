@@ -1,4 +1,4 @@
-import React from 'react';
+import React,  { useState }from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createDrawerNavigator } from '@react-navigation/drawer';
@@ -19,6 +19,8 @@ import UpdateSchedule from './screens/UpdateSchedule';
 import busSchedule from './screens/busSchedule'
 import updateBus from './screens/updateBus'
 import BusDetails from './screens/BusDetails'
+import AdminLogin from './screens/Admin/AdminLogin';
+import AdminDashboard from './screens/Admin/AdminDashboard';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 
@@ -26,6 +28,7 @@ const Stack = createStackNavigator();
 const Drawer = createDrawerNavigator();
 
 const App = () => {
+  const [isAdmin, setIsAdmin] = useState(false);
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
     <NavigationContainer>
@@ -84,8 +87,19 @@ const App = () => {
         <Stack.Screen name="ReportMissingOD" component={ReportMissingOD} options={{
           headerTitle: 'Report Missing Item'}} />
         <Stack.Screen name="Notifications" component={Notifications} />
-        
 
+        <Stack.Screen
+          name="AdminLogin"
+          component={AdminLogin}
+          options={{ headerShown: false }} 
+        />
+
+          {isAdmin && (
+          <Stack.Screen
+            name="AdminDashboard"
+            component={AdminDashboard}
+          />)}
+        
      </Stack.Navigator>
     </NavigationContainer>
     </GestureHandlerRootView>

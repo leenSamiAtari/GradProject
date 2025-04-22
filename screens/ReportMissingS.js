@@ -1,15 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, ScrollView, StyleSheet, Alert, Image, FlatList } from 'react-native';
 import { Button, TextInput, RadioButton, Text, Card, IconButton, FAB, Icon } from 'react-native-paper';
 import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as SecureStore from 'expo-secure-store';
+
+const API_URL = "https://your-ngrok-url.ngrok.io";
+
 
 const ReportMissingS = ({ navigation, route }) => {
-  const { userName = "Test User", userEmail = "test@example.com" } = route.params || {};
+  const { name, email} = route.params || {};
   const [reports, setReports] = useState([]);
   const [showForm, setShowForm] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [currentReport, setCurrentReport] = useState({
     category: '',
     description: '',
@@ -25,11 +31,45 @@ const ReportMissingS = ({ navigation, route }) => {
     busNumber: '',
     photos: [],
     status: 'pending',
-    studentName: "Test User",
-    studentEmail: "test@example.com",
+    name,
+    email,
     dateSubmitted: new Date(),
     isEditing: false,
   });
+
+  useEffect(() => {
+    
+    const fetchReports = async () => {
+      setIsLoading(true);
+      try {
+        const token = await SecureStore.getItemAsync('userToken');
+        const response = await fetch(`${API_URL}/items`,{
+          headers: {
+            'Authorization' : `Bearer ${token}`
+          }
+        });
+        const data = await response.json();
+        const convertedData = data.map(item => ({
+          ...item,
+          dateLost: new Date(item.dateLost),
+          timeApproximate: new Date(item.timeApproximate),
+          dateSubmitted: new Date(item.dateSubmitted)
+        }));
+        
+        setReports(convertedData);
+        setReports(data);
+      } catch (err) {
+        setError(err.message);
+        Alert.alert('Error', 'Failed to load reports');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    if (!showForm) {
+      fetchReports();
+    }
+  }, [showForm]);
 
   const ReportItem = ({ item, index }) => (
     <Card style={styles.reportItem}>
@@ -75,8 +115,8 @@ const ReportMissingS = ({ navigation, route }) => {
       busNumber: '',
       photos: [],
       status: 'pending',
-      studentName: userName,
-      studentEmail: userEmail,
+      name,
+      email,
       dateSubmitted: new Date(),
       isEditing: false,
     });
@@ -84,16 +124,35 @@ const ReportMissingS = ({ navigation, route }) => {
   };
 
   const handleEditReport = (index) => {
+    const reportId = reports[index].id;
+    const reportToEdit = reports.find(report => report.id === reportId);
     setCurrentReport({
-       ...reports[index], 
-       isEditing: true,
-      _index: index });
+      ...reportToEdit,
+      isEditing: true,
+      id: reportId 
+    });
     setShowForm(true);
   };
 
-  const handleDeleteReport = (index) => {
-    const newReports = reports.filter((_, i) => i !== index);
-    setReports(newReports);
+  const handleDeleteReport = async (index) => {
+    const itemId = reports[index].id;
+    try {
+      const token = await SecureStore.getItemAsync('userToken');
+
+      const response = await fetch(`${API_URL}/items/${itemId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) throw new Error('Failed to delete report');
+      
+      const updatedReports = reports.filter((_, i) => i !== index);
+      setReports(updatedReports);
+    } catch (error) {
+      Alert.alert('Error', error.message);
+    }
   };
 
   const MandatoryLabel = () => <Text style={{ color: 'red' }}>*</Text>;
@@ -135,13 +194,15 @@ const ReportMissingS = ({ navigation, route }) => {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [4, 3],
-        quality: 1,
+        quality: 0.8,
+        base64: true
       });
   
       if (!result.canceled && result.assets) {
+        const base64Image = `data:image/jpeg;base64,${result.assets[0].base64}`;
         setCurrentReport(prev => ({
           ...prev,
-          photos: [...prev.photos, ...result.assets.map(asset => asset.uri)]
+          photos: [...prev.photos]
         }));
       }
     } catch (error) {
@@ -149,43 +210,67 @@ const ReportMissingS = ({ navigation, route }) => {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!validateForm()) return;
 
-    setReports(prevReports => {
-      if (currentReport.isEditing) {
-        // Update existing report using the stored index
-        return prevReports.map((report, i) => 
-          i === currentReport._index ? currentReport : report
-        );
-      }
-      // Add new report
-      return [...prevReports, currentReport];
-    });
-    setShowForm(false);
-    Alert.alert('Success', `Report ${currentReport.isEditing ? 'Updated' : 'Submitted'}!`);
+    setIsLoading(true);
+    try {
+      const token = await SecureStore.getItemAsync('userToken');
+      const method = currentReport.isEditing ? 'PUT' : 'POST';
+      const url = currentReport.isEditing 
+        ? `${API_URL}/items/${currentReport.id}`
+        : `${API_URL}/items`;
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          currentReport,
+          dateLost: currentReport.dateLost.toISOString(),
+          timeApproximate: currentReport.timeApproximate.toISOString(),
+          dateSubmitted: currentReport.dateSubmitted.toISOString()
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to save report');
+
+      // Refresh reports after submission
+      const updatedReports = await fetch(`${API_URL}/items`).then(res => res.json());
+      setReports(updatedReports);
+      
+      setShowForm(false);
+      Alert.alert('Success', `Report ${currentReport.isEditing ? 'Updated' : 'Submitted'}!`);
+    } catch (error) {
+      Alert.alert('Error', error.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleMarkAsFound = (index) => {
-    Alert.alert(
-      'Confirm Found',
-      'Are you sure you want to mark this item as found?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Mark Found',
-          onPress: () => {
-            setReports(prev => prev.map((report, i) => 
-              i === index ? {...report, status: 'found'} : report
-            ));
-            Alert.alert('Success', 'Item marked as found!');
-          },
-        },
-      ]
-    );
+  const handleMarkAsFound = async (index) => {
+    const itemId = reports[index].id;
+    try {
+      const token = await SecureStore.getItemAsync('userToken');
+      const response = await fetch(`${API_URL}/items/${itemId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+      },
+        body: JSON.stringify({ status: 'found' }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update status');
+      
+      const updatedReports = [...reports];
+      updatedReports[index].status = 'found';
+      setReports(updatedReports);
+    } catch (error) {
+      Alert.alert('Error', error.message);
+    }
   };
 
   return (
@@ -209,10 +294,10 @@ const ReportMissingS = ({ navigation, route }) => {
         <Card style={styles.userCard}>
           <Card.Content>
             <Text style={styles.userInfo}>
-              👤 Reporter: {userName}
+              👤 Reporter: {name}
             </Text>
             <Text style={styles.userInfo}>
-              📧 Contact Email: {userEmail}
+              📧 Contact Email: {email}
             </Text>
           </Card.Content>
         </Card>

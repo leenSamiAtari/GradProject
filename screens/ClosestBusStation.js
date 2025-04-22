@@ -924,6 +924,7 @@ import * as Location from 'expo-location';
 import MapView, { Marker } from 'react-native-maps';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
+const API_URL = "https://your-ngrok-url.ngrok.io";
 
 const COLORS = {
   primary: '#2F80ED',
@@ -934,7 +935,6 @@ const COLORS = {
   skeleton: '#E0E0E0',
 };
 
-const API_URL = 'https://5b55-109-107-226-44.ngrok-free.app/busStation/closest-stations';
 const getCacheKey = (lat, lon) => `ROUTE_CACHE_${lat}_${lon}`;
 const STATION_DATA_EXPIRY = 24 * 60 * 60 * 1000; // 24h (station names/coordinates)
 const ROUTING_DATA_EXPIRY = 15 * 60 * 1000; // 15m (distances/times from API)
@@ -1009,7 +1009,7 @@ const ClosestBusStation = () => {
         return;
       }
 
-      const url = new URL(API_URL);
+      const url = new URL(`${API_URL}/busStation/closest-stations`);
       url.searchParams.append('lat', latitude);
       url.searchParams.append('lon', longitude);
       

@@ -21,7 +21,8 @@
           "iosBundleIdentifier": "com.yourcompany.yourapp"
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "expo-secure-store"
     ],
     "name": "GradProject",
     "slug": "GradProject",

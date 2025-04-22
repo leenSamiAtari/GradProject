@@ -1,6 +1,9 @@
 import React, { useState } from "react";
 import { View,TouchableOpacity, Text,ImageBackground, TextInput, Button, StyleSheet,Alert, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard, Platform, ScrollView } from "react-native";
 import { MaterialIcons, FontAwesome, Ionicons } from "@expo/vector-icons";
+
+const API_URL = "https://your-ngrok-url.ngrok.io";
+
 const SignUp = ({ route, navigation }) => {
   const { role } = route.params; // Role passed from the welcome page
   const [formData, setFormData] = useState({
@@ -20,7 +23,7 @@ const SignUp = ({ route, navigation }) => {
   const handleSignUp = async () => {
     console.log("Form Data being sent:", formData); // Log formData before the fetch call
     try {
-      const response = await fetch("https://b551-2a01-9700-8040-4900-656e-5e26-3dc8-8e5a.ngrok-free.app/api/signup", {
+      const response = await fetch(`${API_URL}/api/signup`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
